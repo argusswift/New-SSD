@@ -1,7 +1,7 @@
 from dec_module import DEC_Module
 ###################################################################
 # Settings
-cfg = {'dec_mode': True, 'train': False, 'test':False, 'evals':True, 'vis': False}
+cfg = {'dec_mode': True, 'train': False, 'test':False, 'evals':False, 'vis': False}
 
 resume = None
 
