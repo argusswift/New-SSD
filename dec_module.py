@@ -1,6 +1,6 @@
 import torch
 import config as cfg
-from assd_resnet101 import ASSD_ResNet101
+from model import SSD
 from dec_loss import DEC_loss
 import torch.optim as optim
 from dataset_pascal import PASCALVOC
@@ -67,7 +67,7 @@ def detection_collate(batch):
 
 class DEC_Module(object):
     def __init__(self, multigpu, resume):
-        self.model = ASSD_ResNet101(num_classes=cfg.num_classes,
+        self.model = SSD(num_classes=cfg.num_classes,
                                     num_blocks=cfg.mbox,
                                     top_k=cfg.top_k,
                                     conf_thresh=cfg.conf_thresh,
@@ -112,7 +112,7 @@ class DEC_Module(object):
         self.model = self.model.to(device)
 
 
-        eval_model = ASSD_ResNet101(num_classes=cfg.num_classes,
+        eval_model = SSD(num_classes=cfg.num_classes,
                                     num_blocks=cfg.mbox,
                                     top_k=cfg.top_k,
                                     conf_thresh=cfg.conf_thresh,

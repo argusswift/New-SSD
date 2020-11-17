@@ -22,7 +22,7 @@ epoch = 100
 milestones = [120, 170, 220]
 
 # data directory
-root = '/media/grace/Windows/ubuntu-backup/Datasets/PASCALVOC/VOCdevkit'
+root = 'E:\YOLOV4\VOCdevkit'
 
 train_sets = [('2007','train'),('2007','val'),('2012', 'train'),('2012', 'val')]
 test_sets = [('2007', 'test')]
