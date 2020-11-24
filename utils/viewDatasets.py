@@ -3,7 +3,7 @@ import config as cfg
 import numpy as np
 import random
 
-def viewDatasets_DEC(dset_loaders):
+def ViewDatasets(dset_loaders):
     cv2.namedWindow('img')
     for epoch in range(10):
         for data in dset_loaders:

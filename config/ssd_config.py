@@ -16,21 +16,27 @@ nms_thresh = 0.45
 
 # Training settings
 img_size = 513
-batch_size = 24
+batch_size = 2
+workers = 0
 epoch = 100
+MULTI_SCALE_TRAIN = True
+init_lr = 1e-4
+end_lr = 1e-6
+momentum = 0.9
+weight_decay = 0.0005
+warmup_epoch = 2
 # lr_decay_epoch = 50
 milestones = [120, 170, 220]
 
 # data directory
 root = 'E:\YOLOV4\VOCdevkit'
 
-train_sets = [('2007','train'),('2007','val'),('2012', 'train'),('2012', 'val')]
+# train_sets = [('2007','train'),('2007','val'),('2012', 'train'),('2012', 'val')]
+train_sets = [('2007','train'),('2007','val')]
 test_sets = [('2007', 'test')]
 
 means = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
-init_lr = 0.001
-weight_decay = 0.0005
 
 VOC_CLASSES = ('__background__', 'aeroplane', 'bicycle', 'bird', 'boat',
                'bottle', 'bus', 'car', 'cat', 'chair',

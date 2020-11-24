@@ -4,6 +4,7 @@ import sys
 import cv2
 import numpy as np
 import torch
+from utils.data_augment import *
 
 if sys.version_info[0] == 2:
     import xml.etree.cElementTree as ET
@@ -42,10 +43,12 @@ class load_gt(object):
 
 
 class PASCALVOC(data.Dataset):
-    def __init__(self, root, image_sets, transform=None):
+    def __init__(self, root, image_sets, phase, mean, std, img_size=513):
+        self.img_size = img_size  # For Multi-training
         self.root = root
         self.image_sets = image_sets
-        self.transform = transform
+        self.mean = np.array(mean, dtype=np.float32)
+        self.std = np.array(std, dtype=np.float32)
         self._annopath = os.path.join('%s', 'Annotations', '%s.xml')
         self._imgpath = os.path.join('%s', 'JPEGImages', '%s.jpg')
         self.img_ids = []
@@ -54,7 +57,21 @@ class PASCALVOC(data.Dataset):
             rootpath = os.path.join(self.root, 'VOC'+year)
             for line in open(os.path.join(rootpath, 'ImageSets', 'Main', name + '.txt')):
                 self.img_ids.append((rootpath, line.strip()))
-
+        if phase == 'train':
+            print("DEC_transforms size {}".format(self.img_size))
+            self.augment = Compose(transforms=[ConvertFromInts(),
+                                               ToAbsoluteCoords(),
+                                               PhotometricDistort(),
+                                               Expand(mean),
+                                               RandomSampleCrop(),
+                                               RandomMirror(),
+                                               ToPercentCoords(),
+                                               Resize(self.img_size),
+                                               SubtractMeans(mean, std)])
+        else:
+            self.augment = Compose(transforms=[ConvertFromInts(),
+                                               Resize(self.img_size),
+                                               SubtractMeans(mean, std)])
 
     def __getitem__(self, index):
         img_id = self.img_ids[index]
@@ -63,10 +80,9 @@ class PASCALVOC(data.Dataset):
         height, width, channels = img.shape
 
         target = self.load_gt(target, height, width)
-        if self.transform is not None:
-            target = np.array(target)
-            img, bboxes, labels = self.transform(img, target[:,:4], target[:,4])
-            target = np.hstack((bboxes, np.expand_dims(labels, axis=1)))
+        target = np.array(target)
+        img, bboxes, labels = self.transform(img, target[:,:4], target[:,4])
+        target = np.hstack((bboxes, np.expand_dims(labels, axis=1)))
 
         if isinstance(img, np.ndarray):
             img = torch.from_numpy(img.transpose((2,0,1)).copy())
@@ -78,3 +94,17 @@ class PASCALVOC(data.Dataset):
 
     def __len__(self):
         return len(self.img_ids)
+
+    def transform(self,img, bboxes, labels):
+        img, bboxes, labels = self.augment(img, bboxes, labels)
+        # img = cv2.resize(img, (self.img_size, self.img_size))
+        # print("resize {}".format(img.shape))
+        # img = img.astype(np.float32)
+        # img = img / 255
+        # img[:, :, 0] -= self.mean[0]
+        # img[:, :, 1] -= self.mean[1]
+        # img[:, :, 2] -= self.mean[2]
+        # img[:, :, 0] /= self.std[0]
+        # img[:, :, 1] /= self.std[1]
+        # img[:, :, 2] /= self.std[2]
+        return img, bboxes, labels

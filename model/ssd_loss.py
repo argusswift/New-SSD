@@ -69,9 +69,9 @@ def match(gt_boxes, gt_label, priors, match_thresh, variances):
 
 #############################################################################################
 
-class DEC_loss(Module):
+class SSD_loss(Module):
     def __init__(self, num_classes, variances, device, match_thresh=0.5, neg_pos_ratio=3):
-        super(DEC_loss, self).__init__()
+        super(SSD_loss, self).__init__()
         self.num_classes = num_classes
         self.variances = variances
         self.device = device

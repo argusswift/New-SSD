@@ -1,6 +1,7 @@
-import numpy as np
-from numpy import random
+# coding=utf-8
 import cv2
+from numpy import random
+import numpy as np
 
 
 class Compose(object):
@@ -224,6 +225,7 @@ class RandomSampleCrop(object):
                 current_boxes[:,2:]-=rect[:2]
                 return current_img, current_boxes, current_labels
 
+
 class RandomMirror(object):
     def __call__(self, img, bboxes, classes):
         _,w,_ = img.shape
@@ -265,24 +267,3 @@ class SubtractMeans(object):
         img[:,:,1] /= self.std[1]
         img[:,:,2] /= self.std[2]
         return img, bboxes, labels
-
-
-
-class DEC_transforms(object):
-    def __init__(self, phase, size, mean, std):
-        if phase == 'train':
-            self.augment = Compose(transforms=[ConvertFromInts(),
-                                               ToAbsoluteCoords(),
-                                               PhotometricDistort(),
-                                               Expand(mean),
-                                               RandomSampleCrop(),
-                                               RandomMirror(),
-                                               ToPercentCoords(),
-                                               Resize(size),
-                                               SubtractMeans(mean, std)])
-        else:
-            self.augment = Compose(transforms=[ConvertFromInts(),
-                                               Resize(size),
-                                               SubtractMeans(mean, std)])
-    def __call__(self, img, bboxes=None, labels=None):
-        return self.augment(img, bboxes, labels)

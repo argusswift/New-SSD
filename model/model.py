@@ -3,7 +3,7 @@ import math
 import torch.nn as nn
 import torch.nn.init as init
 from torch.autograd import Variable
-from priorbox import PriorBox
+from .priorbox import PriorBox
 import torch.nn.functional as F
 
 layer_cfg = {
@@ -161,6 +161,7 @@ def nms(boxes, scores, nms_thresh=0.5, top_k=200):
         IoU = inter/union
         idx = idx[IoU.le(nms_thresh)]
     return keep, count
+
 
 class Detect(object):
     def __init__(self, num_classes, top_k, conf_thresh, nms_thresh, variance):
@@ -340,18 +341,18 @@ class SSD(nn.Module):
                 feat += [x]
 
         ########## fusion #################################################
-        feat0 = self.fusion_layers[0](feat0)
-        feat1 = F.upsample_bilinear(self.fusion_layers[1](feat1),size=(65,65))
-        feat2 = F.upsample_bilinear(self.fusion_layers[2](feat2),size=(65,65))
-        feat[0] = F.relu(self.fusion_conv(self.fusion_bn(torch.cat([feat0, feat1, feat2], dim=1))))
+        # feat0 = self.fusion_layers[0](feat0)
+        # feat1 = F.upsample_bilinear(self.fusion_layers[1](feat1),size=(65,65))
+        # feat2 = F.upsample_bilinear(self.fusion_layers[2](feat2),size=(65,65))
+        # feat[0] = F.relu(self.fusion_conv(self.fusion_bn(torch.cat([feat0, feat1, feat2], dim=1))))
         ##################################################################
-        feat_new = []
-        for (x,l) in zip(feat, self.att_layers):
-            feat_new.append(l(x))
+        # feat_new = []
+        # for (x,l) in zip(feat, self.att_layers):
+        #     feat_new.append(l(x))
         ########## PreEnd #################################################
         locs = []
         conf = []
-        for (x, l, c) in zip(feat_new, self.locs_layers, self.conf_layers):
+        for (x, l, c) in zip(feat, self.locs_layers, self.conf_layers):
             locs += [l(x).permute(0,2,3,1).contiguous()]
             conf += [c(x).permute(0,2,3,1).contiguous()]
 

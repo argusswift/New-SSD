@@ -1,5 +1,5 @@
 import torch
-import config as cfg
+import config.ssd_config as cfg
 from itertools import product as product
 import math
 
@@ -37,5 +37,5 @@ class PriorBox(object):
         output = torch.Tensor(coords).view(-1,4)  # [8732,4]
         if self.clip:
             output.clamp(min=0., max=1.)
-        output = output.cuda()
+        # output = output.cuda()
         return output #[cy, cx, h, w]
