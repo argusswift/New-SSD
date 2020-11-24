@@ -51,7 +51,8 @@ class Main_Process(object):
                                     top_k=cfg.top_k,
                                     conf_thresh=cfg.conf_thresh,
                                     nms_thresh=cfg.nms_thresh,
-                                    variance=cfg.variance).to(self.device)
+                                    variance=cfg.variance,
+                                    use_attention=False).to(self.device)
         self.optimizer = optim.SGD(self.SSD.parameters(), lr=cfg.init_lr,
                                    momentum=cfg.momentum, weight_decay=cfg.weight_decay)
 
@@ -158,9 +159,9 @@ class Main_Process(object):
                                 )
                             )
                         # multi-sclae training (320-608 pixels) every 10 batches
-                        # if self.multi_scale_train and (i+1)%10 == 0:
-                            # self.train_dataset.img_size = (random.choice(range(10, 20)) * 32)
-                            # print("multi_scale_img_size : {}".format(self.train_dataset.img_size))
+                        if self.multi_scale_train and (i+1)%10 == 0:
+                            self.train_dataset.img_size = (random.choice(range(10, 20)) * 32)
+                            print("multi_scale_img_size : {}".format(self.train_dataset.img_size))
                 else:
                     if epoch%5==0:
                         maps = self.eval(self.device, self.SSD, self.val_dataset)

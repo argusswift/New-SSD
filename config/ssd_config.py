@@ -15,11 +15,11 @@ conf_thresh =  0.01
 nms_thresh = 0.45
 
 # Training settings
-img_size = 513
+img_size = 321
 batch_size = 2
 workers = 0
 epoch = 100
-MULTI_SCALE_TRAIN = True
+MULTI_SCALE_TRAIN = False
 init_lr = 1e-4
 end_lr = 1e-6
 momentum = 0.9

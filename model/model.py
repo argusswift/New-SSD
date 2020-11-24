@@ -263,8 +263,9 @@ def fusionModule():
 class SSD(nn.Module):
     def __init__(self, num_classes, num_blocks,
                  top_k, conf_thresh, nms_thresh,
-                 variance):
+                 variance,use_attention=False):
         super(SSD,self).__init__()
+        self.att = use_attention
         self.num_classes = num_classes
         ############################################################################################
         self.inplanes = 64
@@ -286,14 +287,11 @@ class SSD(nn.Module):
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.prior_boxes = self.prior_boxes.to(device)
-
-        self.fusion_layers = nn.ModuleList(fusionModule())
-        self.fusion_bn = nn.BatchNorm2d(768) #256*3
-        self.fusion_conv = nn.Conv2d(768, 512, kernel_size=1)
-
-
-        self.att_layers = nn.ModuleList(make_attention())
-
+        if self.att == True:
+            self.fusion_layers = nn.ModuleList(fusionModule())
+            self.fusion_bn = nn.BatchNorm2d(768) #256*3
+            self.fusion_conv = nn.Conv2d(768, 512, kernel_size=1)
+            self.att_layers = nn.ModuleList(make_attention())
 
         self.softmax = nn.Softmax(dim=1)
         self.detect = Detect(num_classes=num_classes,
@@ -339,16 +337,16 @@ class SSD(nn.Module):
             x = v(x)
             if k in [5, 11, 17, 23]:
                 feat += [x]
-
-        ########## fusion #################################################
-        # feat0 = self.fusion_layers[0](feat0)
-        # feat1 = F.upsample_bilinear(self.fusion_layers[1](feat1),size=(65,65))
-        # feat2 = F.upsample_bilinear(self.fusion_layers[2](feat2),size=(65,65))
-        # feat[0] = F.relu(self.fusion_conv(self.fusion_bn(torch.cat([feat0, feat1, feat2], dim=1))))
-        ##################################################################
-        # feat_new = []
-        # for (x,l) in zip(feat, self.att_layers):
-        #     feat_new.append(l(x))
+        if self.att == True:
+            ######### fusion #################################################
+            feat0 = self.fusion_layers[0](feat0)
+            feat1 = F.upsample_bilinear(self.fusion_layers[1](feat1),size=(65,65))
+            feat2 = F.upsample_bilinear(self.fusion_layers[2](feat2),size=(65,65))
+            feat[0] = F.relu(self.fusion_conv(self.fusion_bn(torch.cat([feat0, feat1, feat2], dim=1))))
+            #################################################################
+            feat_new = []
+            for (x,l) in zip(feat, self.att_layers):
+                feat_new.append(l(x))
         ########## PreEnd #################################################
         locs = []
         conf = []
