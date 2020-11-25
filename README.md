@@ -1,7 +1,7 @@
 # New-SSD
 High precision and fast speed for SSD
 
-| System | VOC2007 test |VOC2012 test | **FPS** (TitanX) | #Boxes | Input resolution
+| Model | VOC2007 test |VOC2012 test | **FPS** (TitanX) | #Boxes | Input resolution
 |:-------|:-----:|:-----:|:-------:|:-------:|:-------:|
 | SSD300 (VGG16) | 77.2 | 75.8 | 46 | 8732 | 300 x 300 |
 | SSD512 (VGG16) | 79.8 | 78.5 | 19 | 24564 | 512 x 512 |
