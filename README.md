@@ -45,6 +45,6 @@ Library: OpenCV-Python, PyTorch>0.4.0, Ubuntu 14.04
 ## Train/Test/Evaluation
 ```Shell
 1. Change the mode in main.py
-2. Change parameters such as root (data directory) in config.py
+2. Change parameters such as root (data directory) in config/ssd_config.py
 3. python main.py
 ```
