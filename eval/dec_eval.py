@@ -210,8 +210,8 @@ def voc_eval(detpath,
     return rec, prec, ap
 
 def do_python_eval(output_dir='output', use_07=True):
-    annopath = os.path.join(cfg.root, 'VOCtest-2007', 'VOCdevkit', 'VOC2007', 'Annotations', '%s.xml')
-    imgsetpath = os.path.join(cfg.root, 'VOCtest-2007', 'VOCdevkit', 'VOC2007', 'ImageSets', 'Main', '{:s}.txt')
+    annopath = os.path.join(cfg.root, 'VOC2007', 'Annotations', '%s.xml')
+    imgsetpath = os.path.join(cfg.root, 'VOC2007', 'ImageSets', 'Main', '{:s}.txt')
 
     cachedir = os.path.join(cfg.output_dir, 'annotations_cache')
     aps = []
