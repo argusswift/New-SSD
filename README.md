@@ -1,14 +1,14 @@
 # New-SSD
 High precision and fast speed for SSD
 
-| System | VOC2007 test |VOC2012 test | **FPS** (TitanX) | #Boxes | Input resolution
+| Model | VOC2007 test |VOC2012 test | **FPS** (TitanX) | #Boxes | Input resolution
 |:-------|:-----:|:-----:|:-------:|:-------:|:-------:|
 | SSD300 (VGG16) | 77.2 | 75.8 | 46 | 8732 | 300 x 300 |
 | SSD512 (VGG16) | 79.8 | 78.5 | 19 | 24564 | 512 x 512 |
-| ASSD300 (VGG16) | 80.0 | 77.5 | - | 8732 | 300 x 300 |
-| ASSD321 (ResNet101) | 79.5 | 76.4 | 27.5 | 10325 | 321 x 321 |
-| ASSD512 (VGG16) | 81.6 | 80.0| -  | 24564 | 512 x 512 |
-| ASSD513 (ResNet101) | **83.0** | **81.3** | 16 | 25844 | 513 x 513 |
+| SSD300 (VGG16)(this repo) | 80.0 | 77.5 | - | 8732 | 300 x 300 |
+| SSD321 (ResNet101)(this repo) | 79.5 | 76.4 | 27.5 | 10325 | 321 x 321 |
+| SSD512 (VGG16)(this repo) | 81.6 | 80.0| -  | 24564 | 512 x 512 |
+| SSD513 (ResNet101)(this repo) | **83.0** | **81.3** | 16 | 25844 | 513 x 513 |
 
 ## Dependencies
 Library: OpenCV-Python, PyTorch>0.4.0, Ubuntu 14.04
@@ -45,6 +45,6 @@ Library: OpenCV-Python, PyTorch>0.4.0, Ubuntu 14.04
 ## Train/Test/Evaluation
 ```Shell
 1. Change the mode in main.py
-2. Change parameters such as root (data directory) in config.py
+2. Change parameters such as root (data directory) in config/ssd_config.py
 3. python main.py
 ```
