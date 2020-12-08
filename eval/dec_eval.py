@@ -1,4 +1,4 @@
-import config as cfg
+import config.ssd_config as cfg
 import time
 import os
 import numpy as np
@@ -210,8 +210,8 @@ def voc_eval(detpath,
     return rec, prec, ap
 
 def do_python_eval(output_dir='output', use_07=True):
-    annopath = os.path.join(cfg.root, 'VOC2007', 'Annotations', '%s.xml')
-    imgsetpath = os.path.join(cfg.root, 'VOC2007', 'ImageSets', 'Main', '{:s}.txt')
+    annopath = os.path.join(cfg.root, 'VOCtest-2007', 'VOCdevkit', 'VOC2007', 'Annotations', '%s.xml')
+    imgsetpath = os.path.join(cfg.root, 'VOCtest-2007', 'VOCdevkit', 'VOC2007', 'ImageSets', 'Main', '{:s}.txt')
 
     cachedir = os.path.join(cfg.output_dir, 'annotations_cache')
     aps = []
@@ -226,11 +226,10 @@ def do_python_eval(output_dir='output', use_07=True):
            filename, annopath, imgsetpath.format('test'), cls, cachedir,
            ovthresh=0.5, use_07_metric=use_07_metric)
         aps += [ap]
-        # print('AP for {} = {:.4f}'.format(cls, ap))
+        print('AP for {} = {:.4f}'.format(cls, ap))
         with open(os.path.join(output_dir, cls + '_pr.pkl'), 'wb') as f:
             pickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
     print('Mean AP = {:.4f}'.format(np.mean(aps)))
-    return np.mean(aps)
     # print('~~~~~~~~')
     # print('Results:')
     # for ap in aps:
@@ -242,3 +241,4 @@ def do_python_eval(output_dir='output', use_07=True):
     # print('Results computed with the **unofficial** Python eval code.')
     # print('Results should be very close to the official MATLAB eval code.')
     # print('--------------------------------------------------------------')
+    return np.mean(aps)

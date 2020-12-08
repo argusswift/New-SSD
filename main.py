@@ -3,6 +3,7 @@ from model.ssd_loss import SSD_loss
 import torch.optim as optim
 from utils.dataset_pascal import PASCALVOC
 from utils.viewDatasets import ViewDatasets
+import tqdm
 import pickle
 import argparse
 from eval.evaluator import *
@@ -23,22 +24,24 @@ def detection_collate(batch):
     return torch.stack(imgs,0),targets
 
 
-class Main_Process(object):
-    def __init__(self,  weight_path, resume, gpu_id, vis):
+class Trainer(object):
+    def __init__(self,  weight_path, resume, gpu_id, vis, mode=None):
         init_seeds(0)
         self.device = gpu.select_device(gpu_id)
         self.start_epoch = 0
         self.best_mAP = 0.
         self.epochs = cfg.epoch = 100
         self.weight_path = weight_path
+        self.resume = resume
+        self.mode = mode
         self.multi_scale_train = cfg.MULTI_SCALE_TRAIN
         print('Loading Datasets...')
         self.train_dataset = PASCALVOC(img_size=cfg.img_size,root=cfg.root,
                           image_sets=cfg.train_sets,
-                          phase='train',mean=cfg.means, std=cfg.std)
+                          phase='trainval',mean=cfg.means, std=cfg.std)
         self.val_dataset = PASCALVOC(img_size=cfg.img_size,root=cfg.root,
                               image_sets=cfg.test_sets,
-                              phase='val',mean=cfg.means, std=cfg.std)
+                              phase='test',mean=cfg.means, std=cfg.std)
         self.train_dataloader = DataLoader(self.train_dataset,
                                            batch_size=cfg.batch_size,
                                            num_workers=cfg.workers,
@@ -51,14 +54,13 @@ class Main_Process(object):
                                     top_k=cfg.top_k,
                                     conf_thresh=cfg.conf_thresh,
                                     nms_thresh=cfg.nms_thresh,
-                                    variance=cfg.variance,
-                                    use_attention=False).to(self.device)
+                                    variance=cfg.variance).to(self.device)
         self.optimizer = optim.SGD(self.SSD.parameters(), lr=cfg.init_lr,
                                    momentum=cfg.momentum, weight_decay=cfg.weight_decay)
 
         self.criterion = SSD_loss(num_classes=cfg.num_classes, variances=cfg.variance, device=self.device)
 
-        self.__load_model_weights(resume)
+        self.__load_model_weights(self.weight_path, self.resume, self.mode)
 
         self.scheduler = cosine_lr_scheduler.CosineDecayLR(self.optimizer,
                                                           T_max=self.epochs*len(self.train_dataloader),
@@ -67,14 +69,14 @@ class Main_Process(object):
                                                           warmup=cfg.warmup_epoch*len(self.train_dataloader))
 
 
-    def __load_model_weights(self, resume):
+    def __load_model_weights(self, weight_path, resume, mode):
         model_urls = {
             'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
             'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth'
         }
-        if resume is not None:
-            print('Resuming training weights from {} ...'.format(resume))
-            resume_dict = torch.load(resume)
+        if resume or mode:
+            print('Resuming training weights from {} ...'.format(weight_path))
+            resume_dict = torch.load(weight_path)
             resume_dict_update = {}
             for k in resume_dict:
                 if k.startswith('module') and not k.startswith('module_list'):
@@ -86,6 +88,8 @@ class Main_Process(object):
             resnet = "resnet101"
             print('Resuming weights from {} ...'.format(resnet))
             pre_trained_dict = model_zoo.load_url(model_urls[resnet])
+            weight_path = 'weight/resnet101-5d3b4d8f.pth'
+            pre_trained_dict = torch.load(weight_path)
             model_dict = self.SSD.state_dict()
             updated_dict = {k: v for k, v in pre_trained_dict.items() if k in model_dict}
             model_dict.update(updated_dict)
@@ -116,7 +120,7 @@ class Main_Process(object):
         mAP_dict = []
         for epoch in range(self.start_epoch, self.epochs):
             mloss = torch.zeros(3)
-            for phase in ['train','val']:
+            for phase in ['train', 'val']:
                 if phase == 'train':
                     self.SSD.train()
                     i = 0
@@ -146,7 +150,7 @@ class Main_Process(object):
                         )
                         mloss = (mloss * i + loss_items) / (i + 1)
                         if i % 10 == 0:
-                            print("=== Epoch:[{:3}/{}],step:[{:3}/{}],img_size:[{:3}],total_loss:{:.4f}|loss_l:{:.4f}|loss_c:{:.4f}|lr:{:.4f}".format(
+                            print("=== Epoch:[{:3}/{}],step:[{:3}/{}],img_size:[{:3}],total_loss:{:.4f}|loss_l:{:.4f}|loss_c:{:.4f}|lr:{:.10f}".format(
                                     epoch,
                                     self.epochs,
                                     i,
@@ -163,28 +167,23 @@ class Main_Process(object):
                             self.train_dataset.img_size = (random.choice(range(10, 20)) * 32)
                             print("multi_scale_img_size : {}".format(self.train_dataset.img_size))
                 else:
-                    if epoch%5==0:
+                    if epoch>50:
                         maps = self.eval(self.device, self.SSD, self.val_dataset)
                         mAP_dict.append(maps)
                         np.savetxt('mAP.txt', mAP_dict, fmt='%.6f')
                         self.__save_model_weights(epoch, maps)
 
     def test(self):
-                print('testing, evaluation mode...')
-                self.model.eval()
+                print('testing mode...')
+                self.SSD.eval()
 
                 print('loading data...')
                 dsets = PASCALVOC(img_size=cfg.img_size,
                                   root=cfg.root,
                                   image_sets=cfg.test_sets,
-                                  phase='val',mean=cfg.means,std=cfg.std)
-
-                device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-                self.model = self.model.to(device)
-
+                                  phase='test',mean=cfg.means,std=cfg.std)
                 num_imgs = len(dsets)
                 test_timer = Timer()
-                cv2.namedWindow('img')
                 for i in range(num_imgs):
                     print('testing {}...'.format(dsets.img_ids[i]))
                     img, target = dsets.__getitem__(i)
@@ -192,10 +191,10 @@ class Main_Process(object):
                     h, w, c = ori_img.shape
 
                     x = img.unsqueeze(0)
-                    x = x.to(device)
+                    x = x.to(self.device)
 
                     test_timer.tic()
-                    detections = self.model(x, 'test')
+                    detections = self.SSD(x, 'test')
                     detect_time = test_timer.toc(average=False)
                     print('test time: {}'.format(detect_time))
                     for j in range(1, detections.size(1)):
@@ -222,18 +221,23 @@ class Main_Process(object):
                                 cv2.putText(ori_img, cfg.VOC_CLASSES[int(j)] + "%.2f" % score, (x1, y1 + 20),
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                                             (255, 0, 255))
+                    cv2.namedWindow('img')
                     cv2.imshow('img', ori_img)
-                    k = cv2.waitKey(0)
+                    k = cv2.waitKey(10000)
                     if k & 0xFF == ord('q'):
                         cv2.destroyAllWindows()
                         exit()
                 cv2.destroyAllWindows()
                 exit()
 
-    def eval(self, device, eval_model, dsets):
-                # print('evaluation mode...')
-                # self.model.eval()
-                eval_model.eval()
+    def eval(self):
+                print('evaluation mode...')
+                self.SSD.eval()
+                print('loading data...')
+                dsets = PASCALVOC(img_size=cfg.img_size,
+                                  root=cfg.root,
+                                  image_sets=cfg.test_sets,
+                                  phase='test', mean=cfg.means, std=cfg.std)
                 output_dir = cfg.output_dir
                 if not os.path.exists(output_dir):
                     os.mkdir(output_dir)
@@ -245,21 +249,21 @@ class Main_Process(object):
                 total_time = 0
 
                 det_file = os.path.join(output_dir, 'detections.pkl')
-                # print('Detecting bounding boxes...')
+                print('Detecting bounding boxes...')
                 all_boxes = [[[] for _ in range(num_imgs)] for _ in range(cfg.num_classes)]
 
                 _t = {'im_detect': Timer(), 'misc': Timer()}
 
-                for i in range(num_imgs):
+                for i in tqdm(range(num_imgs)):
                     img, target = dsets.__getitem__(i)
                     ori_img = cv2.imread(dsets._imgpath % dsets.img_ids[i])
                     h, w, c = ori_img.shape
 
                     x = img.unsqueeze(0)
-                    x = x.to(device)
+                    x = x.to(self.device)
 
                     _t['im_detect'].tic()
-                    detections = eval_model(x, 'test')
+                    detections = self.SSD(x, 'test')
                     detect_time = _t['im_detect'].toc(average=False)
 
                     # ignore the background boxes
@@ -279,7 +283,7 @@ class Main_Process(object):
                             .astype(np.float32, copy=False)
                         all_boxes[j][i] = cls_dets
 
-                    # print('img-detect: {:d}/{:d} {:.3f}s'.format(i + 1, num_imgs, detect_time))
+                    print('img-detect: {:d}/{:d} {:.3f}s'.format(i + 1, num_imgs, detect_time))
                     total_time += detect_time
 
                 with open(det_file, 'wb') as f:
@@ -288,7 +292,7 @@ class Main_Process(object):
 
                 print('Saving the results...')
                 for cls_ind, cls in enumerate(cfg.labelmap):
-                    # print('Writing {:s} VOC results file'.format(cls))
+                    print('Writing {:s} VOC results file'.format(cls))
                     filename = get_voc_results_file_template('test', cls)
                     with open(filename, 'wt') as f:
                         for im_ind, index in enumerate(dsets.img_ids):
@@ -302,10 +306,9 @@ class Main_Process(object):
                                                dets[k, 0] + 1, dets[k, 1] + 1,
                                                dets[k, 2] + 1, dets[k, 3] + 1))
 
-                # print('Evaluating detections....')
+                print('Evaluating detections....')
                 print('average time is {}'.format(float(total_time) / num_imgs))
-                maps = do_python_eval(output_dir=output_dir, use_07=True)
-                return maps
+                do_python_eval(output_dir=output_dir, use_07=True)
 
     def eval_single(self):
                 print('evaluation mode...')
@@ -395,29 +398,32 @@ class Main_Process(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weight_path', type=str, default='weight/', help='save weight file path')
-    parser.add_argument('--resume', action='store_true', default=None,  help='resume training flag')
+    parser.add_argument('--weight_path', type=str, default='weight/best.pt', help='weight file path')
+    parser.add_argument('--resume', action='store_true',default=None,  help='resume training flag')
     parser.add_argument('--gpu_id', type=int, default=0, help='gpu id')
     parser.add_argument('--vis', type=bool, default=False, help='view data set')
-    parser.add_argument('--mode', type=str, default='train', help='train,test,eval or eval_single')
+    parser.add_argument('--mode', type=str, default='', help='eval eval_single or test')
     opt = parser.parse_args()
-    if opt.mode == 'train':
-        Main_Process(weight_path=opt.weight_path,
-                     resume=opt.resume,
-                     gpu_id=opt.gpu_id,
-                     vis=opt.vis).train()
+    if opt.mode == 'eval':
+        Trainer(weight_path=opt.weight_path,
+                resume=opt.resume,
+                gpu_id=opt.gpu_id,
+                vis=opt.vis,
+                mode=opt.mode).eval()
+    elif opt.mode == 'eval_single':
+        Trainer(weight_path=opt.weight_path,
+                resume=opt.resume,
+                gpu_id=opt.gpu_id,
+                vis=opt.vis,
+                mode=opt.mode).eval_single()
     elif opt.mode == 'test':
-        Main_Process(weight_path=opt.weight_path,
-                     resume=opt.resume,
-                     gpu_id=opt.gpu_id,
-                     vis=opt.vis).test()
-    elif opt.mode == 'eval':
-        Main_Process(weight_path=opt.weight_path,
-                     resume=opt.resume,
-                     gpu_id=opt.gpu_id,
-                     vis=opt.vis).eval()
+        Trainer(weight_path=opt.weight_path,
+                resume=opt.resume,
+                gpu_id=opt.gpu_id,
+                vis=opt.vis,
+                mode=opt.mode).test()
     else:
-        Main_Process(weight_path=opt.weight_path,
-                     resume=opt.resume,
-                     gpu_id=opt.gpu_id,
-                     vis=opt.vis).eval_single()
+        Trainer(weight_path=opt.weight_path,
+                resume=opt.resume,
+                gpu_id=opt.gpu_id,
+                vis=opt.vis).train()
